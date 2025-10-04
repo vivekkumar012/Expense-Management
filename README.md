@@ -13,7 +13,7 @@ TEAM MEMBERS:- VIVEK, AWANTIKA, NIKHIL, GYAN
 - **Other Tools & APIs:** Stripe / JWT / Cloudinary  
 - **Version Control:** Git & GitHub  
 
-## VideoLink:- 
+## VideoLink:- https://youtu.be/uRPA6q_oLv0
 
 ## Team-Members Role:-
 - **Vivek Kumar:** - Full Stack Developer
@@ -21,5 +21,6 @@ TEAM MEMBERS:- VIVEK, AWANTIKA, NIKHIL, GYAN
 - **Awantika Chauhan:** - UI/UX Developer
 
 - **Nikhil Chandrakar:** - Backend Developer
+
 
 - **Gyan Ranjan:** - Frontend Developer
