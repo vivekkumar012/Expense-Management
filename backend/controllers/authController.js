@@ -4,7 +4,6 @@ import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 import UserModel from "../models/User.model.js";
 
-
 //register
 export const register = async (req, res) => {
     try {
@@ -29,7 +28,8 @@ export const register = async (req, res) => {
         const user = new UserModel({
             email,
             password: hashedPassword,
-            name
+            name,
+            role
         })
         await user.save();
 
