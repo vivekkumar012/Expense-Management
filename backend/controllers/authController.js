@@ -140,3 +140,42 @@ export const login = async (req, res) => {
         res.status(500).json({ message: "Internal Server Error" });
     }
 };
+
+export const getAllUsers = async (req, res) => {
+    try {
+        const users = await UserModel.find({});
+        if (!users) {
+            return res.status(500).json({
+                message: "No users find"
+            })
+        }
+        return res.status(200).json({
+            users
+        })
+    } catch (error) {
+        return res.status(500).json({
+            message: "Error in fetching all users",
+            error: error.message
+        })
+    }
+}
+
+export const getManagers = async (req, res) => {
+    try {
+        const managers = await UserModel.find({ role: "Manager" })
+            .select('name email role') // Select only necessary fields
+            .sort({ name: 1 }); // Sort alphabetically by name
+        res.status(200).json({
+            success: true,
+            count: managers.length,
+            data: managers
+        });
+    } catch (error) {
+        console.error('Error fetching managers:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch managers',
+            error: error.message
+        });
+    }
+}
