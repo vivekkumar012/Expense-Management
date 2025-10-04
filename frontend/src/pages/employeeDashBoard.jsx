@@ -44,7 +44,7 @@ const EmployeeExpenses = () => {
   const fetchExpenses = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:3000/api/v1/expenses/my-expenses", {
+      const res = await axios.get("http://localhost:5000/api/v1/expenses/my-expenses", {
         headers: { Authorization: `Bearer ${token}` }
       });
       setExpenses(res.data.data);
@@ -95,7 +95,7 @@ const EmployeeExpenses = () => {
 
       const token = localStorage.getItem("token");
       const res = await axios.post(
-        "http://localhost:3000/api/v1/expenses/ocr",
+        "http://localhost:5000/api/v1/expenses/ocr",
         formDataOCR,
         {
           headers: { 
@@ -141,7 +141,7 @@ const EmployeeExpenses = () => {
       submitData.append('status', isDraft ? 'Draft' : 'Submitted');
 
       const res = await axios.post(
-        "http://localhost:3000/api/v1/expenses",
+        "http://localhost:5000/api/v1/expenses",
         submitData,
         {
           headers: { 

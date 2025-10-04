@@ -29,10 +29,10 @@ const AdminApprovalRules = () => {
   const fetchManagersAndUsers = async () => {
     try {
       const token = localStorage.getItem("token");
-      const managersRes = await axios.get("http://localhost:3000/api/v1/user/managers", {
+      const managersRes = await axios.get("http://localhost:5000/api/v1/user/managers", {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const usersRes = await axios.get("http://localhost:3000/api/v1/user/all", {
+      const usersRes = await axios.get("http://localhost:5000/api/v1/user/all", {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -48,7 +48,7 @@ const AdminApprovalRules = () => {
   const fetchApprovalRules = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:3000/api/approval-rules", {
+      const res = await axios.get("http://localhost:5000/api/approval-rules", {
         headers: { Authorization: `Bearer ${token}` }
       });
       setRules(res.data);
@@ -89,7 +89,7 @@ const AdminApprovalRules = () => {
     try {
       const token = localStorage.getItem("token");
       const res = await axios.post(
-        "http://localhost:3000/api/approval-rules",
+        "http://localhost:5000/api/approval-rules",
         formData,
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -120,7 +120,7 @@ const AdminApprovalRules = () => {
     
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:3000/api/approval-rules/${ruleId}`, {
+      await axios.delete(`http://localhost:5000/api/approval-rules/${ruleId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
