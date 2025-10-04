@@ -4,6 +4,8 @@ import axios from "axios";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
+const API_BASE = "http://localhost:5000/api/v1/user";
+
 const AdminApprovalRules = () => {
   const [formData, setFormData] = useState({
     ruleName: "",
@@ -19,86 +21,118 @@ const AdminApprovalRules = () => {
   const [users, setUsers] = useState([]);
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  // Fetch managers and users on component mount
   useEffect(() => {
     fetchManagersAndUsers();
     fetchApprovalRules();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const getAuthHeader = () => {
+    const token = localStorage.getItem("token");
+    return { Authorization: `Bearer ${token}` };
+  };
+
   const fetchManagersAndUsers = async () => {
+    setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const managersRes = await axios.get("http://localhost:5000/api/v1/user/managers", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const usersRes = await axios.get("http://localhost:5000/api/v1/user/all", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      setManagers(managersRes.data);
-      setUsers(usersRes.data);
-      setLoading(false);
+      const res = await axios.get(`${API_BASE}/all`, { headers: getAuthHeader() });
+      // backend returns { users: [...] } per earlier backend snippet
+      const allUsers = res.data?.users ?? res.data ?? [];
+      setUsers(allUsers);
+      setManagers(allUsers.filter((u) => u.role === "Manager"));
     } catch (error) {
       console.error("Error fetching users:", error);
+      alert("Could not fetch users. Check console for details.");
+    } finally {
       setLoading(false);
     }
   };
 
   const fetchApprovalRules = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/approval-rules", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setRules(res.data);
+      const res = await axios.get(`${API_BASE}/approval-flows`, { headers: getAuthHeader() });
+      // expect { flows: [...] }
+      setRules(res.data?.flows ?? res.data ?? []);
     } catch (error) {
       console.error("Error fetching rules:", error);
+      alert("Could not fetch approval rules.");
     }
   };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value
-    });
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
   const handleApproverChange = (index, field, value) => {
-    const updatedApprovers = [...formData.approvers];
-    updatedApprovers[index][field] = field === "required" ? value : value;
-    setFormData({ ...formData, approvers: updatedApprovers });
-  };
-
-  const addApprover = () => {
-    setFormData({
-      ...formData,
-      approvers: [...formData.approvers, { user: "", required: false }]
+    setFormData((prev) => {
+      const updated = { ...prev };
+      const apros = [...updated.approvers];
+      apros[index] = { ...apros[index], [field]: value };
+      updated.approvers = apros;
+      return updated;
     });
   };
 
+  const addApprover = () => {
+    setFormData((prev) => ({
+      ...prev,
+      approvers: [...prev.approvers, { user: "", required: false }],
+    }));
+  };
+
   const removeApprover = (index) => {
-    const updatedApprovers = formData.approvers.filter((_, i) => i !== index);
-    setFormData({ ...formData, approvers: updatedApprovers });
+    setFormData((prev) => {
+      const updatedApprovers = prev.approvers.filter((_, i) => i !== index);
+      return { ...prev, approvers: updatedApprovers };
+    });
+  };
+
+  const normalizePayload = () => {
+    // Map frontend form shape to backend ApprovalFlow model
+    // approvers -> [{ userId, name, required }]
+    const mappedApprovers = formData.approvers
+      .filter((a) => a.user) // ignore empty
+      .map((a) => {
+        const userObj = users.find((u) => u._id === a.user) || {};
+        return {
+          userId: a.user,
+          name: userObj.name || userObj.email || "Unknown",
+          required: !!a.required,
+        };
+      });
+
+    return {
+      name: formData.ruleName,
+      description: formData.description,
+      isManagerApprover: formData.isManagerApprover,
+      approvers: mappedApprovers,
+      sequence: !!formData.approversSequence,
+      percentage: Number(formData.minApprovalPercentage) || 0,
+      // manager stored as userId (optional)
+      manager: formData.manager || null,
+    };
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    setSaving(true);
+
     try {
-      const token = localStorage.getItem("token");
-      const res = await axios.post(
-        "http://localhost:5000/api/approval-rules",
-        formData,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-      
+      const payload = normalizePayload();
+      const res = await axios.post(`${API_BASE}/approval-flows`, payload, {
+        headers: getAuthHeader(),
+      });
+
       alert("Approval rule created successfully!");
+      // refresh list
       fetchApprovalRules();
-      
+
       // Reset form
       setFormData({
         ruleName: "",
@@ -112,30 +146,30 @@ const AdminApprovalRules = () => {
     } catch (error) {
       console.error("Error creating rule:", error);
       alert(error.response?.data?.message || "Failed to create rule");
+    } finally {
+      setSaving(false);
     }
   };
 
   const deleteRule = async (ruleId) => {
     if (!window.confirm("Are you sure you want to delete this rule?")) return;
-    
+
     try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/approval-rules/${ruleId}`, {
-        headers: { Authorization: `Bearer ${token}` }
+      await axios.delete(`${API_BASE}/approval-flows/${ruleId}`, {
+        headers: getAuthHeader(),
       });
-      
       alert("Rule deleted successfully!");
       fetchApprovalRules();
     } catch (error) {
       console.error("Error deleting rule:", error);
-      alert("Failed to delete rule");
+      alert(error.response?.data?.message || "Failed to delete rule");
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0f0c29] via-[#302b63] to-[#24243e]">
       <Navbar />
-      
+
       <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Header */}
         <div className="mb-8">
@@ -151,9 +185,7 @@ const AdminApprovalRules = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Rule Name */}
             <div>
-              <label className="block text-white/80 text-sm font-semibold mb-2">
-                Rule Name
-              </label>
+              <label className="block text-white/80 text-sm font-semibold mb-2">Rule Name</label>
               <input
                 type="text"
                 name="ruleName"
@@ -167,9 +199,7 @@ const AdminApprovalRules = () => {
 
             {/* Description */}
             <div>
-              <label className="block text-white/80 text-sm font-semibold mb-2">
-                Description
-              </label>
+              <label className="block text-white/80 text-sm font-semibold mb-2">Description</label>
               <textarea
                 name="description"
                 value={formData.description}
@@ -185,20 +215,18 @@ const AdminApprovalRules = () => {
               <div>
                 <label className="block text-white/80 text-sm font-semibold mb-2">
                   Manager
-                  <span className="text-white/40 text-xs ml-2">
-                    (Initially set on user record, admin can change if required)
-                  </span>
+                  <span className="text-white/40 text-xs ml-2">(Initially set on user record, admin can change if required)</span>
                 </label>
                 <select
                   name="manager"
                   value={formData.manager}
                   onChange={handleChange}
                   disabled={loading}
-                  className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none transition-all"
+                  className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-black focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none transition-all"
                 >
-                  <option value="" className="bg-[#302b63]">Select Manager</option>
+                  <option value="">Select Manager</option>
                   {managers.map((manager) => (
-                    <option key={manager._id} value={manager._id} className="bg-[#302b63]">
+                    <option key={manager._id} value={manager._id}>
                       {manager.name}
                     </option>
                   ))}
@@ -207,9 +235,7 @@ const AdminApprovalRules = () => {
 
               {/* Is Manager Approver */}
               <div>
-                <label className="block text-white/80 text-sm font-semibold mb-2">
-                  Manager Approval
-                </label>
+                <label className="block text-white/80 text-sm font-semibold mb-2">Manager Approval</label>
                 <div className="flex items-center h-12 bg-white/5 border border-white/20 rounded-lg px-4">
                   <input
                     type="checkbox"
@@ -218,9 +244,7 @@ const AdminApprovalRules = () => {
                     onChange={handleChange}
                     className="w-5 h-5 rounded border-white/20 bg-white/5 text-purple-600 focus:ring-2 focus:ring-blue-400"
                   />
-                  <span className="ml-3 text-white/70 text-sm">
-                    Expense goes to manager first before other approvers
-                  </span>
+                  <span className="ml-3 text-white/70 text-sm">Expense goes to manager first before other approvers</span>
                 </div>
               </div>
             </div>
@@ -228,9 +252,7 @@ const AdminApprovalRules = () => {
             {/* Approvers List */}
             <div>
               <div className="flex justify-between items-center mb-3">
-                <label className="block text-white/80 text-sm font-semibold">
-                  Approvers
-                </label>
+                <label className="block text-white/80 text-sm font-semibold">Approvers</label>
                 <button
                   type="button"
                   onClick={addApprover}
@@ -245,15 +267,15 @@ const AdminApprovalRules = () => {
                 {formData.approvers.map((approver, index) => (
                   <div key={index} className="flex gap-3 items-center">
                     <span className="text-white/60 font-semibold w-8">{index + 1}</span>
-                    
+
                     <select
                       value={approver.user}
                       onChange={(e) => handleApproverChange(index, "user", e.target.value)}
-                      className="flex-1 bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none transition-all"
+                      className="flex-1 bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-black focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none transition-all"
                     >
-                      <option value="" className="bg-[#302b63]">Select User</option>
+                      <option value="">Select User</option>
                       {users.map((user) => (
-                        <option key={user._id} value={user._id} className="bg-[#302b63]">
+                        <option key={user._id} value={user._id}>
                           {user.name}
                         </option>
                       ))}
@@ -274,6 +296,7 @@ const AdminApprovalRules = () => {
                         type="button"
                         onClick={() => removeApprover(index)}
                         className="p-3 bg-red-500/20 border border-red-400/30 rounded-lg text-red-400 hover:bg-red-500/30 transition-all"
+                        title="Remove approver"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -296,7 +319,7 @@ const AdminApprovalRules = () => {
                 <div>
                   <span className="text-white/80 font-semibold block mb-1">Approvers Sequence</span>
                   <p className="text-white/50 text-sm leading-relaxed">
-                    If checked: Request goes to approvers in sequence (1→2→3). If required approver rejects, expense is auto-rejected.
+                    If checked: Request goes to approvers in sequence (1→2→3). If a required approver rejects, expense is auto-rejected.
                     <br />
                     If not checked: Request goes to all approvers simultaneously.
                   </p>
@@ -306,9 +329,7 @@ const AdminApprovalRules = () => {
 
             {/* Minimum Approval Percentage */}
             <div>
-              <label className="block text-white/80 text-sm font-semibold mb-2">
-                Minimum Approval Percentage (%)
-              </label>
+              <label className="block text-white/80 text-sm font-semibold mb-2">Minimum Approval Percentage (%)</label>
               <input
                 type="number"
                 name="minApprovalPercentage"
@@ -319,18 +340,17 @@ const AdminApprovalRules = () => {
                 max="100"
                 className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/40 focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none transition-all"
               />
-              <p className="text-white/40 text-xs mt-2">
-                Specify the percentage of approvers required to approve the request
-              </p>
+              <p className="text-white/40 text-xs mt-2">Specify the percentage of approvers required to approve the request</p>
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
+              disabled={saving}
               className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-purple-700 text-white font-semibold py-4 rounded-lg hover:shadow-[0_10px_30px_rgba(102,126,234,0.5)] hover:-translate-y-0.5 transition-all duration-300"
             >
               <Save className="h-5 w-5" />
-              Create Approval Rule
+              {saving ? "Saving..." : "Create Approval Rule"}
             </button>
           </form>
         </div>
@@ -338,7 +358,7 @@ const AdminApprovalRules = () => {
         {/* Existing Rules */}
         <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8">
           <h2 className="text-2xl font-bold text-white mb-6">Existing Rules</h2>
-          
+
           {rules.length === 0 ? (
             <p className="text-white/50 text-center py-8">No approval rules created yet</p>
           ) : (
@@ -347,7 +367,7 @@ const AdminApprovalRules = () => {
                 <div key={rule._id} className="bg-white/5 border border-white/20 rounded-lg p-6 hover:bg-white/8 transition-all">
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h3 className="text-xl font-semibold text-white mb-1">{rule.ruleName}</h3>
+                      <h3 className="text-xl font-semibold text-white mb-1">{rule.name || rule.ruleName}</h3>
                       <p className="text-white/60 text-sm">{rule.description}</p>
                     </div>
                     <button
@@ -357,7 +377,7 @@ const AdminApprovalRules = () => {
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-white/50">Manager: </span>
@@ -369,11 +389,11 @@ const AdminApprovalRules = () => {
                     </div>
                     <div>
                       <span className="text-white/50">Sequence: </span>
-                      <span className="text-white/80">{rule.approversSequence ? "Yes" : "No"}</span>
+                      <span className="text-white/80">{rule.sequence ? "Yes" : "No"}</span>
                     </div>
                     <div>
                       <span className="text-white/50">Min Approval: </span>
-                      <span className="text-white/80">{rule.minApprovalPercentage}%</span>
+                      <span className="text-white/80">{rule.percentage ?? rule.minApprovalPercentage ?? 0}%</span>
                     </div>
                   </div>
                 </div>
@@ -382,7 +402,7 @@ const AdminApprovalRules = () => {
           )}
         </div>
       </div>
-      
+
       <Footer />
     </div>
   );

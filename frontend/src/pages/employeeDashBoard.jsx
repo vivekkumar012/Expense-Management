@@ -1,15 +1,120 @@
 import React, { useState, useEffect } from "react";
-import { Upload, Plus, FileText, Clock, CheckCircle, XCircle, Camera } from "lucide-react";
+import { Upload, Plus, FileText, Clock, CheckCircle, XCircle, Camera, Eye, Download } from "lucide-react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
+// Mock data for preview
+const mockExpenses = [
+  {
+    _id: "1",
+    description: "Team Lunch at The Grand Hotel",
+    date: "2025-10-01",
+    category: "Food",
+    amount: 3500,
+    currency: "INR",
+    remarks: "Client meeting lunch",
+    status: "Approved"
+  },
+  {
+    _id: "2",
+    description: "Uber to Airport",
+    date: "2025-09-28",
+    category: "Travel",
+    amount: 850,
+    currency: "INR",
+    remarks: "Business trip",
+    status: "Approved"
+  },
+  {
+    _id: "3",
+    description: "Office Supplies - Stationery",
+    date: "2025-09-25",
+    category: "Office Supplies",
+    amount: 1200,
+    currency: "INR",
+    remarks: "Monthly supplies",
+    status: "Submitted"
+  },
+  {
+    _id: "4",
+    description: "Hotel Stay - Business Conference",
+    date: "2025-09-22",
+    category: "Accommodation",
+    amount: 8500,
+    currency: "INR",
+    remarks: "3 nights stay",
+    status: "Submitted"
+  },
+  {
+    _id: "5",
+    description: "Coffee Meeting with Client",
+    date: "2025-09-20",
+    category: "Food",
+    amount: 450,
+    currency: "INR",
+    remarks: "None",
+    status: "Approved"
+  },
+  {
+    _id: "6",
+    description: "Taxi to Office",
+    date: "2025-09-18",
+    category: "Travel",
+    amount: 280,
+    currency: "INR",
+    remarks: "Emergency travel",
+    status: "Rejected"
+  },
+  {
+    _id: "7",
+    description: "Dinner with Team",
+    date: "2025-09-15",
+    category: "Entertainment",
+    amount: 2800,
+    currency: "INR",
+    remarks: "Team building activity",
+    status: "Draft"
+  },
+  {
+    _id: "8",
+    description: "Flight Tickets - Mumbai to Delhi",
+    date: "2025-09-12",
+    category: "Travel",
+    amount: 6500,
+    currency: "INR",
+    remarks: "Business meeting",
+    status: "Approved"
+  },
+  {
+    _id: "9",
+    description: "Printer Cartridges",
+    date: "2025-09-10",
+    category: "Office Supplies",
+    amount: 950,
+    currency: "INR",
+    remarks: "None",
+    status: "Draft"
+  },
+  {
+    _id: "10",
+    description: "Restaurant Bill - Client Dinner",
+    date: "2025-09-08",
+    category: "Food",
+    amount: 4200,
+    currency: "INR",
+    remarks: "Important client meeting",
+    status: "Submitted"
+  }
+];
+
 const EmployeeExpenses = () => {
-  const [expenses, setExpenses] = useState([]);
-  const [filteredExpenses, setFilteredExpenses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [expenses, setExpenses] = useState(mockExpenses); // Using mock data by default
+  const [filteredExpenses, setFilteredExpenses] = useState(mockExpenses);
+  const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [useMockData, setUseMockData] = useState(true); // Toggle for mock data
   
   const [formData, setFormData] = useState({
     description: "",
@@ -34,14 +139,17 @@ const EmployeeExpenses = () => {
   ];
 
   useEffect(() => {
-    fetchExpenses();
-  }, []);
+    if (!useMockData) {
+      fetchExpenses();
+    }
+  }, [useMockData]);
 
   useEffect(() => {
     filterExpenses();
   }, [statusFilter, expenses]);
 
   const fetchExpenses = async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem("token");
       const res = await axios.get("http://localhost:5000/api/v1/expenses/my-expenses", {
@@ -51,6 +159,9 @@ const EmployeeExpenses = () => {
       setLoading(false);
     } catch (error) {
       console.error("Error fetching expenses:", error);
+      // Fallback to mock data on error
+      setExpenses(mockExpenses);
+      setUseMockData(true);
       setLoading(false);
     }
   };
@@ -128,6 +239,20 @@ const EmployeeExpenses = () => {
   const handleSubmit = async (e, isDraft = false) => {
     e.preventDefault();
     
+    if (useMockData) {
+      // Add to mock data
+      const newExpense = {
+        _id: Date.now().toString(),
+        ...formData,
+        status: isDraft ? 'Draft' : 'Submitted'
+      };
+      setExpenses([newExpense, ...expenses]);
+      alert(isDraft ? "Expense saved as draft!" : "Expense submitted successfully!");
+      setShowModal(false);
+      resetForm();
+      return;
+    }
+
     try {
       const token = localStorage.getItem("token");
       const submitData = new FormData();
@@ -199,6 +324,7 @@ const EmployeeExpenses = () => {
       draft: expenses.filter(e => e.status?.toLowerCase() === 'draft').length,
       submitted: expenses.filter(e => e.status?.toLowerCase() === 'submitted').length,
       approved: expenses.filter(e => e.status?.toLowerCase() === 'approved').length,
+      totalAmount: expenses.reduce((sum, e) => sum + Number(e.amount), 0)
     };
   };
 
@@ -208,16 +334,16 @@ const EmployeeExpenses = () => {
     <div className="min-h-screen bg-gradient-to-br from-[#0f0c29] via-[#302b63] to-[#24243e]">
       <Navbar />
       
-      <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2">My Expenses</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">My Expenses</h1>
             <p className="text-white/60">Track and manage your expense submissions</p>
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-700 text-white font-semibold rounded-lg hover:shadow-[0_10px_30px_rgba(102,126,234,0.5)] hover:-translate-y-0.5 transition-all duration-300"
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-700 text-white font-semibold rounded-lg hover:shadow-[0_10px_30px_rgba(102,126,234,0.5)] hover:-translate-y-0.5 transition-all duration-300 w-full sm:w-auto justify-center"
           >
             <Plus className="h-5 w-5" />
             New Expense
@@ -225,34 +351,38 @@ const EmployeeExpenses = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
-            <div className="text-white/60 text-sm mb-1">Total Expenses</div>
-            <div className="text-3xl font-bold text-white">{counts.total}</div>
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
+          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-4 sm:p-6 hover:bg-white/15 transition-all">
+            <div className="text-white/60 text-xs sm:text-sm mb-1">Total Expenses</div>
+            <div className="text-2xl sm:text-3xl font-bold text-white">{counts.total}</div>
           </div>
-          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
-            <div className="text-white/60 text-sm mb-1">Draft</div>
-            <div className="text-3xl font-bold text-gray-400">{counts.draft}</div>
+          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-4 sm:p-6 hover:bg-white/15 transition-all">
+            <div className="text-white/60 text-xs sm:text-sm mb-1">Draft</div>
+            <div className="text-2xl sm:text-3xl font-bold text-gray-400">{counts.draft}</div>
           </div>
-          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
-            <div className="text-white/60 text-sm mb-1">Waiting Approval</div>
-            <div className="text-3xl font-bold text-yellow-400">{counts.submitted}</div>
+          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-4 sm:p-6 hover:bg-white/15 transition-all">
+            <div className="text-white/60 text-xs sm:text-sm mb-1">Pending</div>
+            <div className="text-2xl sm:text-3xl font-bold text-yellow-400">{counts.submitted}</div>
           </div>
-          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
-            <div className="text-white/60 text-sm mb-1">Approved</div>
-            <div className="text-3xl font-bold text-green-400">{counts.approved}</div>
+          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-4 sm:p-6 hover:bg-white/15 transition-all">
+            <div className="text-white/60 text-xs sm:text-sm mb-1">Approved</div>
+            <div className="text-2xl sm:text-3xl font-bold text-green-400">{counts.approved}</div>
+          </div>
+          <div className="col-span-2 lg:col-span-1 bg-gradient-to-r from-purple-500/20 to-purple-700/20 backdrop-blur-lg border border-purple-400/30 rounded-xl p-4 sm:p-6 hover:from-purple-500/30 hover:to-purple-700/30 transition-all">
+            <div className="text-purple-200 text-xs sm:text-sm mb-1">Total Amount</div>
+            <div className="text-2xl sm:text-3xl font-bold text-purple-100">₹{counts.totalAmount.toLocaleString()}</div>
           </div>
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-3 mb-6 overflow-x-auto">
+        <div className="flex gap-2 sm:gap-3 mb-6 overflow-x-auto pb-2 scrollbar-hide">
           {['all', 'draft', 'submitted', 'approved', 'rejected'].map(status => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
-              className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all ${
+              className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all text-sm ${
                 statusFilter === status
-                  ? 'bg-gradient-to-r from-purple-500 to-purple-700 text-white'
+                  ? 'bg-gradient-to-r from-purple-500 to-purple-700 text-white shadow-lg'
                   : 'bg-white/5 text-white/70 hover:bg-white/10'
               }`}
             >
@@ -261,8 +391,8 @@ const EmployeeExpenses = () => {
           ))}
         </div>
 
-        {/* Expenses Table */}
-        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl overflow-hidden">
+        {/* Expenses Table - Desktop */}
+        <div className="hidden lg:block bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl overflow-hidden shadow-2xl">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-white/5 border-b border-white/10">
@@ -291,13 +421,18 @@ const EmployeeExpenses = () => {
                 ) : (
                   filteredExpenses.map((expense) => (
                     <tr key={expense._id} className="border-b border-white/10 hover:bg-white/5 transition-colors">
-                      <td className="px-6 py-4 text-white/90">{expense.description}</td>
+                      <td className="px-6 py-4 text-white/90 font-medium">{expense.description}</td>
                       <td className="px-6 py-4 text-white/70 text-sm">
-                        {new Date(expense.date).toLocaleDateString()}
+                        {new Date(expense.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </td>
-                      <td className="px-6 py-4 text-white/70">{expense.category}</td>
-                      <td className="px-6 py-4 text-white/90 font-semibold">
-                        {expense.amount} {expense.currency}
+                      <td className="px-6 py-4">
+                        <span className="inline-block px-3 py-1 bg-cyan-500/20 text-cyan-400 rounded-full text-xs font-semibold">
+                          {expense.category}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-white/90 font-bold">
+                        ₹{expense.amount.toLocaleString()} 
+                        <span className="text-white/50 text-xs ml-1">{expense.currency}</span>
                       </td>
                       <td className="px-6 py-4 text-white/60 text-sm">{expense.remarks || 'None'}</td>
                       <td className="px-6 py-4">{getStatusBadge(expense.status)}</td>
@@ -308,18 +443,65 @@ const EmployeeExpenses = () => {
             </table>
           </div>
         </div>
+
+        {/* Expenses Cards - Mobile */}
+        <div className="lg:hidden space-y-4">
+          {loading ? (
+            <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-8 text-center text-white/50">
+              Loading expenses...
+            </div>
+          ) : filteredExpenses.length === 0 ? (
+            <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-8 text-center text-white/50">
+              No expenses found
+            </div>
+          ) : (
+            filteredExpenses.map((expense) => (
+              <div key={expense._id} className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-5 hover:bg-white/15 transition-all">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <h3 className="text-white font-semibold mb-1">{expense.description}</h3>
+                    <p className="text-white/60 text-xs">
+                      {new Date(expense.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </p>
+                  </div>
+                  {getStatusBadge(expense.status)}
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <p className="text-white/50 text-xs mb-1">Category</p>
+                    <span className="inline-block px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded text-xs font-semibold">
+                      {expense.category}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-white/50 text-xs mb-1">Amount</p>
+                    <p className="text-white font-bold">₹{expense.amount.toLocaleString()}</p>
+                  </div>
+                </div>
+                
+                {expense.remarks && expense.remarks !== 'None' && (
+                  <div className="pt-3 border-t border-white/10">
+                    <p className="text-white/50 text-xs mb-1">Remarks</p>
+                    <p className="text-white/70 text-sm">{expense.remarks}</p>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Modal for New Expense */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-[#1a1a2e] border border-white/20 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-[#1a1a2e] border-b border-white/10 px-8 py-6 z-10">
-              <h2 className="text-2xl font-bold text-white">Create New Expense</h2>
+            <div className="sticky top-0 bg-[#1a1a2e] border-b border-white/10 px-6 sm:px-8 py-6 z-10">
+              <h2 className="text-xl sm:text-2xl font-bold text-white">Create New Expense</h2>
               <p className="text-white/60 text-sm mt-1">Upload receipt or fill details manually</p>
             </div>
 
-            <form className="p-8 space-y-6">
+            <form className="p-6 sm:p-8 space-y-6">
               {/* Receipt Upload */}
               <div>
                 <label className="block text-white/80 text-sm font-semibold mb-3">
@@ -339,8 +521,8 @@ const EmployeeExpenses = () => {
                     className="flex items-center justify-center gap-3 w-full bg-white/5 border-2 border-dashed border-white/20 rounded-lg px-6 py-8 cursor-pointer hover:bg-white/10 hover:border-cyan-400/50 transition-all"
                   >
                     <Camera className="h-8 w-8 text-cyan-400" />
-                    <div>
-                      <p className="text-white/90 font-semibold">Click to upload or take photo</p>
+                    <div className="text-center sm:text-left">
+                      <p className="text-white/90 font-semibold text-sm sm:text-base">Click to upload or take photo</p>
                       <p className="text-white/50 text-xs mt-1">OCR will auto-extract details</p>
                     </div>
                   </label>
@@ -355,8 +537,8 @@ const EmployeeExpenses = () => {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                <div className="sm:col-span-2">
                   <label className="block text-white/80 text-sm font-semibold mb-2">Description</label>
                   <input
                     type="text"
@@ -422,7 +604,7 @@ const EmployeeExpenses = () => {
                   />
                 </div>
 
-                <div>
+                <div className="sm:col-span-2">
                   <label className="block text-white/80 text-sm font-semibold mb-2">Remarks</label>
                   <input
                     type="text"
@@ -435,7 +617,7 @@ const EmployeeExpenses = () => {
                 </div>
               </div>
 
-              <div className="flex gap-4 pt-4">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <button
                   type="button"
                   onClick={(e) => handleSubmit(e, true)}
