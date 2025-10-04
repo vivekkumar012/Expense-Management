@@ -23,7 +23,7 @@ const LoginPage = () => {
     console.log("Logging in with:", formData);
 
     try {
-      const res = await axios.post("http://localhost:3000/api/auth/login", formData);
+      const res = await axios.post("http://localhost:5000/api/v1/user/login", formData);
       
       if (res.status === 200) {
         // Store token in localStorage

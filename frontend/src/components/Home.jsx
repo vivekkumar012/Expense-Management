@@ -113,7 +113,7 @@ export default function Home() {
         @keyframes float {
           0%, 100% { 
             transform: translateY(0) translateX(0); 
-            opacity: 0; 
+            opacity: 0;
           }
           10% { opacity: 1; }
           90% { opacity: 1; }

@@ -3,6 +3,9 @@ import {Routes, Route} from "react-router-dom"
 import  Home  from "./components/Home"
 import RegisterPage from "./pages/Register";
 import LoginPage from "./pages/Login";
+import AdminApprovalRules from "./pages/adminDashboard";
+import EmployeeExpenses from "./pages/employeeDashBoard";
+
 
 function App() {
   return (
@@ -11,6 +14,9 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
+
+        <Route path="/admin/dashboard" element={<AdminApprovalRules />} />
+        <Route path="/employee/dashboard" element={<EmployeeExpenses />} />
       </Routes>
     </div>
   );
